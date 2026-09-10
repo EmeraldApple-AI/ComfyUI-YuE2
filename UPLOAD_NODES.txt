@@ -1,0 +1,5 @@
+Clone is not complete until nodes.py is in the repo root.
+
+Add the nodes.py from ComfyUI-YuE2-github.zip via GitHub: Add file -> Upload files.
+
+The working local file is the one in custom_nodes/ComfyUI-YuE2/nodes.py that already forces runtime.backend = torch-eager.
