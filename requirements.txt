@@ -1,0 +1,7 @@
+# Install YuE2 itself into the ComfyUI Python env — this file only lists extras
+# that the nodes import directly. The official package pulls torch, soundfile, etc.
+numpy
+# yue2 is NOT pip-published as a named extra here on purpose:
+#   git clone https://github.com/multimodal-art-projection/YuE.git
+#   pip install ./YuE
+# or install yue2_infer-*.whl from https://huggingface.co/m-a-p/YuE2-3B

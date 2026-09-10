@@ -1,0 +1,17 @@
+[project]
+name = "comfyui-yue2"
+description = "ComfyUI nodes for YuE2-3B: lyrics-to-song with editable ABC scores."
+version = "0.1.0"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+dependencies = ["numpy"]
+
+[project.urls]
+Repository = "https://github.com/EmeraldApple-AI/ComfyUI-YuE2"
+Issues = "https://github.com/EmeraldApple-AI/ComfyUI-YuE2/issues"
+
+[tool.comfy]
+PublisherId = "emeraldapple-ai"
+DisplayName = "ComfyUI-YuE2"
+Icon = ""
+requires-comfyui = ">=0.3.0"
