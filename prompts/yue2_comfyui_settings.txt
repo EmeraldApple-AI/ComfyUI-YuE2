@@ -1,0 +1,104 @@
+YuE2 ComfyUI settings
+=====================
+
+Use this as a checklist. Official defaults first; only move sliders when
+a take fails in a specific way.
+
+GRAPH
+-----
+1. YuE2 Loader -> YuE2 Generate -> Preview / Save Audio
+2. Optional: YuE2 Style Prompt -> Generate style
+3. Optional: YuE2 Lyrics Template -> Generate lyrics
+
+Do not wire extra Int nodes into min/max tokens unless you know why.
+
+LOADER (once per session)
+-------------------------
+model              m-a-p/YuE2-3B
+vae                m-a-p/YuE2-Vae
+device             cuda
+memory_budget_gib  24
+backend            torch-eager
+progress           on
+
+On this Windows portable Torch, keep backend at torch-eager.
+Keep the nodes.py line:
+
+    runtime.backend = "torch-eager"
+
+Do not switch the Loader to "torch" on this machine. That path needs
+Flash Attention compiled into PyTorch and will crash.
+
+GENERATE — DAILY DEFAULTS
+-------------------------
+style              one comma-separated line (see STYLE below)
+lyrics             tagged sections (see LYRICS below)
+cot                full      originals
+                   melody    covers
+                   off       fastest draft, no score
+seed               randomize while hunting, then fixed to keep a take
+cfg_scale          0
+override_sampling  off
+save_artifacts     on
+filename_prefix    yue2/song
+abc                empty unless covering or editing a score
+
+While override_sampling is off, these widgets are ignored:
+semantic_max_tokens, semantic_min_tokens, abc_max_tokens,
+temperature, top_p, top_k, repetition_penalty.
+
+STYLE LINE (order)
+------------------
+language, genre, mood/energy, vocal, instruments, BPM, melody notes, length hint
+
+Length hints YuE2 understands:
+- short song, about one minute
+- radio-length song, about two to three minutes
+- full-length song, about four minutes
+
+Do not write seconds (duration: 180).
+
+LYRICS
+------
+Tags: [Verse] [Chorus] [Prechorus] [Bridge] [Intro] [Outro]
+Blank line between sections.
+Start with [Verse] or [Chorus], not a long [Intro].
+4-8 short lines per section.
+More sections ~= longer song.
+
+Radio length:  Verse -> Chorus -> Verse -> Chorus
+Full length:   add Bridge + last Chorus
+
+IF YOU TURN override_sampling ON
+--------------------------------
+Only after a default take. Change one thing at a time.
+
+Song got cut off          semantic_max_tokens 9000 -> 12000
+Song died immediately     semantic_min_tokens 200 (never 0)
+Score too short           abc_max_tokens 4096 -> 6000
+Mushy / random            temperature 0.8, top_k 50
+Hook looping              repetition_penalty 1.05
+Need more text grip       cfg_scale 1.2
+
+Starting override values if you must:
+semantic_max_tokens    9000
+semantic_min_tokens    200
+abc_max_tokens         4096
+temperature            0.8
+top_p                  0.9
+top_k                  50
+repetition_penalty     1.05
+
+WHAT NOT TO DO
+--------------
+- backend=torch on this portable
+- semantic_min_tokens=0
+- empty lyrics with cot=full
+- ABC filled in with cot=off
+
+HUNT A TAKE
+-----------
+1. override off, cfg 0, cot full
+2. seed = randomize
+3. queue 2-3 times
+4. when one works: set that seed to fixed, save the workflow
