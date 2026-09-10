@@ -1,8 +1,7 @@
 """ComfyUI nodes wrapping the official yue2.YuE2Pipeline."""
 from __future__ import annotations
-import os, sys, traceback
+import os, sys, traceback, wave
 from pathlib import Path
-from typing import Any
 
 if sys.platform == "win32":
     os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS", "1")
@@ -124,6 +123,22 @@ def _song_to_audio(audio_np, sample_rate):
         channels_first = arr.T
     waveform = torch.from_numpy(np.ascontiguousarray(channels_first)).float().unsqueeze(0)
     return {"waveform": waveform, "sample_rate": int(sample_rate)}
+
+def _write_wav(path, audio_np, sample_rate):
+    arr = np.asarray(audio_np)
+    if arr.ndim == 1:
+        arr = arr[:, None]
+    if arr.shape[0] < arr.shape[1] and arr.shape[0] <= 8:
+        arr = arr.T
+    pcm = np.clip(arr, -1.0, 1.0)
+    pcm = (pcm * 32767.0).astype(np.int16)
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(path), "wb") as handle:
+        handle.setnchannels(int(pcm.shape[1]))
+        handle.setsampwidth(2)
+        handle.setframerate(int(sample_rate))
+        handle.writeframes(pcm.tobytes())
 
 def _clean_abc(abc):
     if abc is None:
@@ -275,7 +290,7 @@ class YuE2Generate:
             "style": ("STRING", {"multiline": True, "default": "English, warm piano pop, expressive female voice, acoustic piano, rounded bass and light drums, lyrical memorable melody, unhurried phrasing, 88 BPM, radio-length song, about two to three minutes"}),
             "lyrics": ("STRING", {"multiline": True, "default": LYRIC_TEMPLATES["verse + chorus"]}),
             "cot": (["full", "melody", "off"], {"default": "full"}),
-            "seed": ("INT", {"default": 831001, "min": 0, "max": 0x7FFFFFFF, "control_after_generate": True}),
+            "seed": ("INT", {"default": 831001, "min": 0, "max": 0x7FFFFFFFFFFFFFFF, "control_after_generate": True}),
             "cfg_scale": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 20.0, "step": 0.01}),
             "override_sampling": ("BOOLEAN", {"default": False}),
             "semantic_max_tokens": ("INT", {"default": 9000, "min": 200, "max": 16000, "step": 100}),
@@ -322,12 +337,16 @@ class YuE2Generate:
             out = _unique_dir(_output_dir() / filename_prefix)
             try:
                 result = song.save_artifacts(out)
-            except UnicodeEncodeError:
+            except (UnicodeEncodeError, OSError) as exc:
                 out.mkdir(parents=True, exist_ok=True)
                 if score:
                     (out / "score.abc").write_text(score, encoding="utf-8")
                 (out / "lyrics.txt").write_text(str(lyrics), encoding="utf-8")
-                extra = f"saved={out} (utf-8 fallback) | {extra}"
+                try:
+                    _write_wav(out / "audio.wav", song.audio, song.sample_rate)
+                except Exception:
+                    traceback.print_exc()
+                extra = f"saved={out} (utf-8 fallback: {type(exc).__name__}) | {extra}"
             else:
                 seconds = result.get("audio_seconds", "?") if isinstance(result, dict) else "?"
                 extra = f"saved={out} seconds={seconds} | {extra}"
@@ -341,7 +360,7 @@ class YuE2Plan:
             "style": ("STRING", {"multiline": True, "default": "English, jazz-funk, warm lead vocal"}),
             "lyrics": ("STRING", {"multiline": True, "default": "[Verse]\nWrite lyrics here\n\n[Chorus]\nWrite the hook here"}),
             "cot": (["full", "melody"], {"default": "full"}),
-            "seed": ("INT", {"default": 831001, "min": 0, "max": 0x7FFFFFFF, "control_after_generate": True}),
+            "seed": ("INT", {"default": 831001, "min": 0, "max": 0x7FFFFFFFFFFFFFFF, "control_after_generate": True}),
         }, "optional": {"abc": ("STRING", {"multiline": True, "default": ""})}}
     RETURN_TYPES = ("STRING", "STRING")
     RETURN_NAMES = ("abc", "status")
@@ -441,8 +460,7 @@ def _list_text_files():
                     names.append(str(p.relative_to(root)))
                 except ValueError:
                     names.append(str(p))
-    out = []
-    seen = set()
+    out, seen = [], set()
     for n in names:
         if n not in seen:
             seen.add(n)
