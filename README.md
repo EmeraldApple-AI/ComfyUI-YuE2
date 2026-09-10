@@ -123,7 +123,7 @@ Latest NVIDIA Game Ready or Studio driver. If Comfy prints a `c10.dll` error, in
 ## 5. First run
 
 1. Restart Comfy after the pip installs.
-2. Add **YuE2 Loader** (`audio → YuE2`). Model `m-a-p/YuE2-3B`, VAE `m-a-p/YuE2-Vae`.
+2. Add **YuE2 Loader** (`audio → YuE2`). Model `m-a-p/YuE2-3B`, VAE `m-a-p/YuE2-Vae`. The nodes will automatically download the YUE2 models.
 3. Windows: backend **`torch-eager`**. Linux with working Flash: `torch` is optional.
 4. Connect **YuE2 Generate** → Preview / Save Audio.
 5. First queue downloads several GB from Hugging Face.
