@@ -1,16 +1,21 @@
 YuE2 ComfyUI settings
 =====================
 
-Use this as a checklist. Official defaults first; only move sliders when
-a take fails in a specific way.
+Checklist for the published nodes. Official defaults first.
+Only move sliders after a take fails in a specific way.
+
 
 GRAPH
 -----
-1. YuE2 Loader -> YuE2 Generate -> Preview / Save Audio
-2. Optional: YuE2 Style Prompt -> Generate style
-3. Optional: YuE2 Lyrics Template -> Generate lyrics
+YuE2 Loader -> YuE2 Generate -> Preview Audio / Save Audio
 
-Do not wire extra Int nodes into min/max tokens unless you know why.
+Optional:
+  YuE2 Style Prompt  -> Generate.style
+  YuE2 Lyrics Template -> Generate.lyrics
+  YuE2 Plan Score    -> edit ABC -> Generate.abc
+
+Do not wire extra Int nodes into token sliders unless you know why.
+
 
 LOADER (once per session)
 -------------------------
@@ -18,26 +23,40 @@ model              m-a-p/YuE2-3B
 vae                m-a-p/YuE2-Vae
 device             cuda
 memory_budget_gib  24
-backend            torch-eager
+backend            torch-eager     Windows portable / official Windows wheels
+                   torch           only if this Torch actually compiled Flash Attention
 progress           on
 
-On this Windows portable Torch, keep backend at torch-eager.
-Keep the nodes.py line:
+The nodes already fall back to torch-eager if Flash Attention is missing
+or throws USE_FLASH_ATTENTION was not enabled for build. You do not need
+to edit nodes.py.
 
-    runtime.backend = "torch-eager"
+On Windows portable, leave the dropdown on torch-eager. Do not pip install
+flash-attn to "fix" this. That package is a different stack.
 
-Do not switch the Loader to "torch" on this machine. That path needs
-Flash Attention compiled into PyTorch and will crash.
+Need CUDA PyTorch (50-series: cu128+, capability 12,0). See README.
+
+
+WINDOWS ENV (optional but recommended)
+--------------------------------------
+HF_HUB_DISABLE_SYMLINKS=1
+PYTHONUTF8=1
+PYTHONIOENCODING=utf-8
+
+Stops WinError 1314 on the Hugging Face cache and cp1252 crashes when
+saving Korean / Japanese / Chinese plan.json. The nodes also force UTF-8
+writes and will save score.abc + lyrics.txt + audio.wav if plan.json fails.
+
 
 GENERATE — DAILY DEFAULTS
 -------------------------
-style              one comma-separated line (see STYLE below)
-lyrics             tagged sections (see LYRICS below)
+style              one comma-separated line (see STYLE)
+lyrics             tagged sections (see LYRICS)
 cot                full      originals
-                   melody    covers
+                   melody    covers / pasted ABC melody
                    off       fastest draft, no score
 seed               randomize while hunting, then fixed to keep a take
-cfg_scale          0
+cfg_scale          0         (YuE2 built-in default)
 override_sampling  off
 save_artifacts     on
 filename_prefix    yue2/song
@@ -47,9 +66,14 @@ While override_sampling is off, these widgets are ignored:
 semantic_max_tokens, semantic_min_tokens, abc_max_tokens,
 temperature, top_p, top_k, repetition_penalty.
 
+
 STYLE LINE (order)
 ------------------
 language, genre, mood/energy, vocal, instruments, BPM, melody notes, length hint
+
+Example:
+English, industrial death metal, aggressive high energy, harsh male scream,
+distorted 8-string guitars, blast beats, 180 BPM, radio-length song, about two to three minutes
 
 Length hints YuE2 understands:
 - short song, about one minute
@@ -58,6 +82,7 @@ Length hints YuE2 understands:
 
 Do not write seconds (duration: 180).
 
+
 LYRICS
 ------
 Tags: [Verse] [Chorus] [Prechorus] [Bridge] [Intro] [Outro]
@@ -65,9 +90,11 @@ Blank line between sections.
 Start with [Verse] or [Chorus], not a long [Intro].
 4-8 short lines per section.
 More sections ~= longer song.
+Language of the lyrics must match the language in STYLE.
 
 Radio length:  Verse -> Chorus -> Verse -> Chorus
 Full length:   add Bridge + last Chorus
+
 
 IF YOU TURN override_sampling ON
 --------------------------------
@@ -89,12 +116,27 @@ top_p                  0.9
 top_k                  50
 repetition_penalty     1.05
 
+
+COVERS / EDITS
+--------------
+1. Generate once with cot=full, save artifacts
+2. Open the saved .abc
+3. Edit melody / chords
+4. Paste ABC into Generate abc
+5. cot=full (or melody if the ABC has no chords)
+6. Same style / lyrics / seed to remix that take
+
+
 WHAT NOT TO DO
 --------------
-- backend=torch on this portable
+- backend=torch on Windows portable
+- pip install flash-attn into python_embeded
 - semantic_min_tokens=0
+- override on + temperature 1.0 + top_k 100 + penalty 1.20 all at once
 - empty lyrics with cot=full
 - ABC filled in with cot=off
+- duration: 183 seconds in the style line
+
 
 HUNT A TAKE
 -----------
